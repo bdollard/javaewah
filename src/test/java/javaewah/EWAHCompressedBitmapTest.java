@@ -64,6 +64,42 @@ public class EWAHCompressedBitmapTest {
     return answer;
   }
 
+  /*
+   * Test bitmap truncation functionality
+   */
+  @Test
+  public void truncateTest() {
+    System.out.println("Testing truncate functionality");
+    final int totalNumBits = 32768;
+    final double odds = 0.9;
+    Random rand = new Random(323232323);
+    int[] truncatePoints = {0, 7, 1232, 12323, 32766, 32767};
+    int[] bitsSetAtTruncatePoints = new int[truncatePoints.length];
+    int numBitsSet = 0;
+    int pointsIndex = 0;
+    EWAHCompressedBitmap cBitMap = new EWAHCompressedBitmap();
+    for (int i = 0; i < totalNumBits; i++) {
+      if (rand.nextDouble() < odds) {
+        cBitMap.set(i);
+        numBitsSet++;
+      }
+      if (i == truncatePoints[pointsIndex]) {
+        bitsSetAtTruncatePoints[pointsIndex] = numBitsSet;
+        pointsIndex++;
+      }
+    }
+    Assert.assertEquals(cBitMap.cardinality(),numBitsSet);
+    System.out.println(Arrays.toString(bitsSetAtTruncatePoints));
+    for (int i = 0; i < truncatePoints.length; i++) {
+      EWAHCompressedBitmap bm = cBitMap.truncate(truncatePoints[i]);
+      Assert.assertEquals(bm.cardinality(), bitsSetAtTruncatePoints[i]);
+      Assert.assertEquals(bm.set(truncatePoints[i] + 1),1);
+      Assert.assertEquals(bm.cardinality(), (bitsSetAtTruncatePoints[i] + 1));
+    }
+    
+    
+  }
+  
   /**
    * Pseudo-non-deterministic test inspired by S.J.vanSchaik.
    * (Yes, non-deterministic tests are bad, but the test is actually deterministic.)
