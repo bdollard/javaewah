@@ -64,7 +64,7 @@ public class EWAHCompressedBitmapTest {
     return answer;
   }
 
-  /*
+  /**
    * Test bitmap truncation functionality
    */
   @Test
@@ -89,11 +89,10 @@ public class EWAHCompressedBitmapTest {
       }
     }
     Assert.assertEquals(cBitMap.cardinality(),numBitsSet);
-    System.out.println(Arrays.toString(bitsSetAtTruncatePoints));
     for (int i = 0; i < truncatePoints.length; i++) {
       EWAHCompressedBitmap bm = cBitMap.truncate(truncatePoints[i]);
       Assert.assertEquals(bm.cardinality(), bitsSetAtTruncatePoints[i]);
-      Assert.assertEquals(bm.set(truncatePoints[i] + 1),1);
+      Assert.assertTrue(bm.set(truncatePoints[i] + 1));
       Assert.assertEquals(bm.cardinality(), (bitsSetAtTruncatePoints[i] + 1));
     }
     
