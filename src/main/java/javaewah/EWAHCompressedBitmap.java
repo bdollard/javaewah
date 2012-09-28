@@ -1838,6 +1838,22 @@ public final class EWAHCompressedBitmap implements Cloneable, Externalizable,
     }
     return this.sizeinbits ^ karprabin;
   }
+  /**
+   * Returns a copy of the bitmap truncated to the supplied index.
+   */
+  public EWAHCompressedBitmap truncate(int maxIndex) {
+    EWAHCompressedBitmap cBitMap = new EWAHCompressedBitmap();
+    IntIterator it = this.intIterator();
+    while ( it.hasNext() ) {
+      int ind = it.next();
+      if ( ind <= maxIndex ) {
+        cBitMap.set(ind);
+      } else {
+        break;
+      }
+    }
+    return cBitMap;
+  }
 
   /*
    * @see java.lang.Object#clone()
