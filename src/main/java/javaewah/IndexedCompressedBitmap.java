@@ -24,11 +24,14 @@ public class IndexedCompressedBitmap extends EWAHCompressedBitmap {
 
     int nearest = 0;
     for (int i = 0; i <= this.indexIndex; i += 2) {
-      if (this.index[nearest + 1] > truncateIndex)
+      if (this.index[nearest + 1] > truncateIndex) {
         break;
       } else {
         nearest = i;
       }
+    }
+    for (int i = nearest + 2; i < indexSize; i++) {
+      index[i] = 0;
     }
     int current_offset = index[nearest];
     int current_size_in_bits = index[nearest + 1];
@@ -36,15 +39,48 @@ public class IndexedCompressedBitmap extends EWAHCompressedBitmap {
     int num_lits = rlw.getNumberOfLiteralWords();
     int num_running = rlw.getRunningLenghth();
     while ( current_offset + (num_lits * wordin_bits) < this.buffer.length ) {
+      if (current_size_in_bits + wordinbits * (num_lits + num_running) 
+            > trucateIndex)
+        break;
       current_size_in_bits += wordinbits * (num_lits + num_running);
       current_offset += num_lits * word_in_bits;
-      if (current_size_in_bits > trucateIndex)
-        break;
-
+      num_lits = rlw.getNumberOfLiteralWords();
+      num_running = rlw.getRunningLenghth();
       rlw.position = current_offset;
     }
     this.rlw.position = rlw.position;
-    this.rlw.
+    this.sizeinbits = trucateIndex;
+    int total_remaining = truncateIndex - current_size_in_bits;
+    if (total_remaining <= rlw.getRunningLength * wordinbits) {
+      rlw.setRunningLength(total_remaining \ wordinbits);
+      
+      
+      if (rlw.getRunningBit()) {
+        buffer[current_offset + 1] = 0l;
+        rlw.setLiteralWords(0);
+      } else {
+        int mod = total_remaining % wordinbits;
+        if (mod != 0) {
+          buffer[current_offset + 1] = ~0l >>> mod;
+          rlw.setLiteralWords(1);
+        } else {
+          rlw.setLiteralWords(0);
+        }
+      }
+      this.sizeinbytes = 1 + rlw.position + rlw.getLiteralWords();
+      return;
+    } 
+    
+    total_remaining -= rlw.getRunningLength * wordinbits;
+    int mod = total_remaining % wordinbits;
+    int numWholeWords =  total_remaining / wordinbits;
+    if (mod == 0) {
+      rlw.setLiteralWords = numWholeWords;
+    } else {
+      buffer[curret_offset + numWholeWords] &= ~0l >>> mod;
+    }
+    this.sizeinbytes = 1 + rlw.position + rlw.getLiteralWords();
+    
   }
   
   public void reshuffle_index() {
