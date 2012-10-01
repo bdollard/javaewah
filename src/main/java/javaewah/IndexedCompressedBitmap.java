@@ -6,20 +6,24 @@ public class IndexedCompressedBitmap extends EWAHCompressedBitmap {
   int indexIndex = 0;
   int indexExponent = 0;
   int rlwCount = 0;
-  int indexSize = 64;   // 17 to 32 items in index, I should experiment later with 
+  int indexSize = 64;   // 17 to 32 items in index, I should experiment later with
                         // different sizes
   int[] index = new int[indexSize];
-  
-  public IndexedCompressedBitmap(int offset) {
-    
-  }
 
   public IndexedCompressedBitmap(int offset, byte[] initialData) {
-    
+    super();
   }
-  
+
+  public IndexedCompressedBitmap(int offset) {
+    super();
+  }
+
+  public IndexedCompressedBitmap(){
+    super();
+  }
+
   public void truncateToIndex(int truncateIndex) {
-    if (this.sizeinbits <= i) //easy case, don't need to do anything.
+    if (this.sizeinbits <= truncateIndex) //easy case, don't need to do anything.
       return;
 
     int nearest = 0;
@@ -30,6 +34,7 @@ public class IndexedCompressedBitmap extends EWAHCompressedBitmap {
         nearest = i;
       }
     }
+    System.out.println( "nearest:" + nearest );
     for (int i = nearest + 2; i < indexSize; i++) {
       index[i] = 0;
     }
@@ -37,67 +42,79 @@ public class IndexedCompressedBitmap extends EWAHCompressedBitmap {
     int current_size_in_bits = index[nearest + 1];
     RunningLengthWord rlw = new RunningLengthWord(buffer, current_offset);
     int num_lits = rlw.getNumberOfLiteralWords();
-    int num_running = rlw.getRunningLenghth();
-    while ( current_offset + (num_lits * wordin_bits) < this.buffer.length ) {
-      if (current_size_in_bits + wordinbits * (num_lits + num_running) 
-            > trucateIndex)
+    long num_running = rlw.getRunningLength();
+    while ( current_offset + (num_lits * wordinbits) < this.buffer.length ) {
+      if (current_size_in_bits + wordinbits * (num_lits + num_running)
+            > truncateIndex) {
+        System.out.println("got here");
         break;
+      }
       current_size_in_bits += wordinbits * (num_lits + num_running);
-      current_offset += num_lits * word_in_bits;
       num_lits = rlw.getNumberOfLiteralWords();
-      num_running = rlw.getRunningLenghth();
+      num_running = rlw.getRunningLength();
+      current_offset += num_lits + 1;
+      num_lits = rlw.getNumberOfLiteralWords();
+      num_running = rlw.getRunningLength();
       rlw.position = current_offset;
     }
+    System.out.println("rlw position: " + rlw.position);
     this.rlw.position = rlw.position;
-    this.sizeinbits = trucateIndex;
+    this.sizeinbits = truncateIndex;
     int total_remaining = truncateIndex - current_size_in_bits;
-    if (total_remaining <= rlw.getRunningLength * wordinbits) {
-      rlw.setRunningLength(total_remaining \ wordinbits);
-      
-      
+    if (total_remaining <= rlw.getRunningLength() * wordinbits) {
+      rlw.setRunningLength(total_remaining / wordinbits);
+
+
       if (rlw.getRunningBit()) {
         buffer[current_offset + 1] = 0l;
-        rlw.setLiteralWords(0);
+        rlw.setNumberOfLiteralWords(0);
       } else {
+        System.out.println("dead space");
+        System.out.println("tot: " + total_remaining);
         int mod = total_remaining % wordinbits;
+        System.out.println("mod: " + mod);
         if (mod != 0) {
-          buffer[current_offset + 1] = ~0l >>> mod;
-          rlw.setLiteralWords(1);
+          buffer[current_offset + 1] = ~0l >>> (wordinbits - mod);
+          rlw.setNumberOfLiteralWords(1);
         } else {
-          rlw.setLiteralWords(0);
+          rlw.setNumberOfLiteralWords(0);
         }
       }
-      this.sizeinbytes = 1 + rlw.position + rlw.getLiteralWords();
+      this.actualsizeinwords = 1 + rlw.position + rlw.getNumberOfLiteralWords();
       return;
-    } 
-    
-    total_remaining -= rlw.getRunningLength * wordinbits;
+    }
+
+    total_remaining -= rlw.getRunningLength() * wordinbits;
+    System.out.println("total remaining: " + total_remaining);
     int mod = total_remaining % wordinbits;
     int numWholeWords =  total_remaining / wordinbits;
     if (mod == 0) {
-      rlw.setLiteralWords = numWholeWords;
+      rlw.setNumberOfLiteralWords(numWholeWords);
     } else {
-      buffer[curret_offset + numWholeWords] &= ~0l >>> mod;
+      System.out.println("offset" + (current_offset + numWholeWords));
+      long mask = ~0l >>> (wordinbits - mod);
+      System.out.println("mask " + mask);
+      buffer[current_offset + numWholeWords + 1] &= mask;
+      rlw.setNumberOfLiteralWords(numWholeWords + 1);
     }
-    this.sizeinbytes = 1 + rlw.position + rlw.getLiteralWords();
-    
+    this.actualsizeinwords = 1 + rlw.position + rlw.getNumberOfLiteralWords();
+
   }
-  
+
   public void reshuffle_index() {
-    int i = 0;
     for (int i = 0; i < this.indexSize/2; i+=2) {
       this.index[i] = this.index[i * 2];
     }
     this.indexIndex = this.indexSize / 2;
     this.indexExponent += 1;
   }
-  
+
   @Override
   public void new_rlw() {
   //this code is pretty non-reentrant. but then, so is the rest of this class
     rlwCount++;
     super.new_rlw();
-    if ( rlwCount == indexIndex * (2 ** indexExponent) ) {
+    if (rlwCount == indexIndex * Math.pow(2, indexExponent)) {
       if (indexIndex == indexSize - 2) { // -2 -- one for zero-base index, one for two ints per index record
         reshuffle_index();
       }
